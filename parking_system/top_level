@@ -26,30 +26,19 @@ architecture Behavioral of top_level is
     -- Component Declarations
     component sensor is
         Port ( clk : in STD_LOGIC;
-               trig : out STD_LOGIC;
-               echo : in STD_LOGIC
+               trig : in STD_LOGIC;
+               echo : out STD_LOGIC
                );
     end component;
     
-    component clock_enable is
-        generic (
-            N_PERIODS : integer := 1000
-        );
-        port (
-            clk   : in    std_logic;
-            rst   : in    std_logic;
-            pulse : out   std_logic
-        );
-    end component;
-    
-    component counter is
+    component counter_up_down is
       generic(
-        nbit : integer := 4
+        nbit : integer
       );
       Port ( 
         clk : in std_logic;
-        en_s1 : in std_logic;
-        en_s2 : in std_logic;
+        echo1 : in std_logic;
+        echo2 : in std_logic;
         rst : in std_logic;
         count : out std_logic_vector(nbit - 1 downto 0) 
       );
@@ -64,51 +53,27 @@ architecture Behavioral of top_level is
    end component;
 
     -- Internal Signals
-    signal echo1_signal, echo2_signal, pulse_signal : STD_LOGIC;
+    --signal echo1_signal, echo2_signal, pulse_signal : STD_LOGIC;
     signal sig_tmp : std_logic_vector(3 downto 0);
     signal echo_counter : integer := 0;
+    signal echo_sig1 : std_logic;
+    signal echo_sig2 : std_logic;
     signal distance : integer := 0;
     signal measuring : STD_LOGIC := '0';
 
 begin
-    -- Sensor Instances
-    sensor1 : sensor
-        port map (
-            clk => clk,
-            trig => pulse_signal,
-            echo => echo1_signal
-        );
-        
-    sensor2 : sensor
-        port map (
-            clk => clk,
-            trig => pulse_signal,
-            echo => echo2_signal
-        );
-
-    -- Clock Enable Instance
-    clk_en : clock_enable
-        generic map (
-            N_PERIODS => 1000
-        )
-        port map (
-            clk => clk,
-            rst => BTNC,
-            pulse => pulse_signal
-        );
-
-    -- Counter Instance
-    counter_up_down : counter
-        generic map(
-            nbit => 4
-        )
-        port map (
-            clk => clk,
-            en_s1 => echo1_signal,
-            en_s2 => echo2_signal,
-            rst => BTNC,
-            count => sig_tmp
-        );
+ -- Counter Instance
+    count : counter_up_down 
+      generic map(
+         nbit => 4
+          )
+      port map( 
+        clk => clk,
+        rst => BTNC,
+        echo1 => echo_sig1, 
+        echo2 => echo_sig2,
+        count => sig_tmp
+      );
         
     -- Display Instance
     disp : display
@@ -135,10 +100,10 @@ begin
             red_led <= '1';
             green_led <= '0';
         elsif rising_edge(clk) then
-            if (echo1_signal = '1' or echo2_signal = '1') and  measuring /= '1' then
+            if (echo_sig1 = '1' or echo_sig2 = '1') and  measuring /= '1' then
                 measuring <= '1';
                 echo_counter <= 0;  -- Start counting from zero
-            elsif (echo1_signal = '0' and echo2_signal = '0') and measuring /= '0' then
+            elsif (echo_sig1 = '0' and echo_sig2 = '0') and measuring /= '0' then
                 distance <= echo_counter / 58;
                 measuring <= '0';
                 echo_counter <= 0;
