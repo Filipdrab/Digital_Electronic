@@ -38,18 +38,43 @@ entity counter is
   );
   Port ( 
     clk : in std_logic;
-    en_s1 : in std_logic;
-    en_s2 : in std_logic;
     rst : in std_logic;
+    echo1 : in std_logic;
+    echo2 : in std_logic;
     count : out std_logic_vector(nbit - 1 downto 0) 
   );
 end counter;
 
 architecture Behavioral of counter is
+
+component sensor is
+    Port ( clk : in STD_LOGIC;
+           trig : in STD_LOGIC; -- Corrigido para saída
+           echo : out STD_LOGIC
+           );
+end component;
+
+signal en_s1 : std_logic;
+signal en_s2 : std_logic;
+signal sig_pulse : std_logic;
 signal sig_count : std_logic_vector(nbit - 1 downto 0);
 --signal limit_count : integer range 0 to 10;
 begin
-
+    s1 : sensor
+     port map(
+        clk => clk,
+        trig => sig_pulse,
+        echo => en_s1
+     );
+     
+    s2 : sensor
+     port map(
+        clk => clk,
+        trig => sig_pulse,
+        echo => en_s2
+     );
+     
+    
    p_counter : process(clk)
    begin
        
@@ -57,7 +82,7 @@ begin
            if (rst = '1') then
                  sig_count <= (others => '0');
                  
-           elsif (en_s1 = '1') then
+           elsif (en_s1 = '0') then
                 sig_count <= sig_count + 1;
                   
            elsif (en_s2 = '1') then
@@ -67,7 +92,7 @@ begin
            end if;         
       end if;
     end process;
-        
-	count <= sig_count;					
+       
+	count <= sig_count;				
 						
 end Behavioral;
