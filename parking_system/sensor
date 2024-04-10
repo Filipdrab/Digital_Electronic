@@ -1,0 +1,38 @@
+library IEEE;
+use IEEE.STD_LOGIC_1164.ALL;
+
+entity sensor is
+    Port ( clk : in STD_LOGIC;
+           trig : out STD_LOGIC; -- Corrigido para saída
+           echo : in STD_LOGIC
+           );
+end sensor;
+
+architecture Behavioral of sensor is
+-- Assumindo um clock de 100MHz
+signal echo_counter : integer := 0;
+signal distance : integer := 0;
+signal measuring : STD_LOGIC := '0'; -- Novo sinal para indicar quando uma mediç?o está em andamento
+
+begin
+
+    -- Geraç?o do pulso de Trigger
+    -- Aqui voc? precisaria de lógica para controlar quando e como o pulso de trigger é gerado
+
+    -- Mediç?o do pulso Echo
+    echo_process : process(clk)
+    begin
+        if rising_edge(clk) then
+            if echo = '1' then
+                measuring <= '1'; -- Início da mediç?o
+                echo_counter <= echo_counter + 1;
+            elsif echo = '0' and measuring = '1' then
+                -- Fim da mediç?o do echo, calcula a distância
+                distance <= (echo_counter / 58); -- Cálculo simplificado da distância
+                echo_counter <= 0; -- Reset do contador para a próxima mediç?o
+                measuring <= '0'; -- Fim da mediç?o
+            end if;
+        end if;
+    end process;
+
+end Behavioral;
