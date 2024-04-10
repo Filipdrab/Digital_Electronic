@@ -1,0 +1,79 @@
+LIBRARY ieee;
+USE ieee.std_logic_1164.ALL;
+USE ieee.numeric_std.ALL;
+
+ENTITY top_level_tb IS
+END top_level_tb;
+
+ARCHITECTURE behavior OF top_level_tb IS 
+    -- Component Declaration for the Unit Under Test (UUT)
+    COMPONENT top_level
+    PORT(
+        clk : IN std_logic;
+        CA : OUT std_logic;
+        CB : OUT std_logic;
+        CC : OUT std_logic;
+        CD : OUT std_logic;
+        CE : OUT std_logic;
+        CF : OUT std_logic;
+        CG : OUT std_logic;
+        DP : OUT std_logic;
+        AN : OUT std_logic_vector(7 downto 0);
+        BTNC : IN std_logic;
+        red_led : OUT std_logic;
+        green_led : OUT std_logic
+    );
+    END COMPONENT;
+    
+    --Inputs
+    signal clk : std_logic := '0';
+    signal BTNC : std_logic := '0';
+
+    --Outputs
+    signal CA, CB, CC, CD, CE, CF, CG, DP : std_logic;
+    signal AN : std_logic_vector(7 downto 0);
+    signal red_led, green_led : std_logic;
+
+    -- Clock period definitions
+    constant clk_period : time := 10 ns;
+
+BEGIN
+    -- Instantiate the Unit Under Test (UUT)
+    uut: top_level PORT MAP (
+          clk => clk,
+          CA => CA,
+          CB => CB,
+          CC => CC,
+          CD => CD,
+          CE => CE,
+          CF => CF,
+          CG => CG,
+          DP => DP,
+          AN => AN,
+          BTNC => BTNC,
+          red_led => red_led,
+          green_led => green_led
+      );
+
+    -- Clock process definitions
+    clk_process :process
+    begin
+        clk <= '0';
+        wait for clk_period/2;
+        clk <= '1';
+        wait for clk_period/2;
+    end process;
+
+    -- Stimulus process
+    stim_proc: process
+    begin        
+        -- hold reset state for 100 ns.
+        wait for 100 ns;    
+        BTNC <= '1';
+        wait for 100 ns;
+        BTNC <= '0';
+
+        WAIT; -- will wait forever
+    end process;
+
+END;
