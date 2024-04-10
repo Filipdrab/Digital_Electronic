@@ -1,0 +1,162 @@
+library IEEE;
+use IEEE.STD_LOGIC_1164.ALL;
+
+entity top_level is
+    Port (
+        clk : in STD_LOGIC; -- Clock principal
+        CA    : out   std_logic;                   -- Cathode of segment A
+        CB    : out   std_logic;                    -- Cathode of segment B
+        CC    : out   std_logic;                    -- Cathode of segment C
+        CD    : out   std_logic;                    -- Cathode of segment D
+        CE    : out   std_logic;                    -- Cathode of segment E
+        CF    : out   std_logic;                    -- Cathode of segment F
+        CG    : out   std_logic;                    -- Cathode of segment G
+        DP    : out   std_logic;                    -- Decimal point
+        AN    : out   std_logic_vector(7 downto 0); -- Common anodes of all on-board displays
+        BTNC  : in    std_logic;                    -- Clear the display
+        red_led : out std_logic;
+        green_led : out std_logic
+    );
+end top_level;
+
+architecture Behavioral of top_level is
+    type state_type is (opened_state, closed_state);
+    signal current_state : state_type;
+    
+    -- Component Declarations
+    component sensor is
+        Port ( clk : in STD_LOGIC;
+               trig : out STD_LOGIC;
+               echo : in STD_LOGIC
+               );
+    end component;
+    
+    component clock_enable is
+        generic (
+            N_PERIODS : integer := 1000
+        );
+        port (
+            clk   : in    std_logic;
+            rst   : in    std_logic;
+            pulse : out   std_logic
+        );
+    end component;
+    
+    component counter is
+      generic(
+        nbit : integer := 4
+      );
+      Port ( 
+        clk : in std_logic;
+        en_s1 : in std_logic;
+        en_s2 : in std_logic;
+        rst : in std_logic;
+        count : out std_logic_vector(nbit - 1 downto 0) 
+      );
+    end component;
+    
+    component display is
+            port (
+                clear : in    std_logic;
+                bin   : in    std_logic_vector(3 downto 0);
+                seg   : out   std_logic_vector(6 downto 0)
+            );
+   end component;
+
+    -- Internal Signals
+    signal echo1_signal, echo2_signal, pulse_signal : STD_LOGIC;
+    signal sig_tmp : std_logic_vector(3 downto 0);
+    signal echo_counter : integer := 0;
+    signal distance : integer := 0;
+    signal measuring : STD_LOGIC := '0';
+
+begin
+    -- Sensor Instances
+    sensor1 : sensor
+        port map (
+            clk => clk,
+            trig => pulse_signal,
+            echo => echo1_signal
+        );
+        
+    sensor2 : sensor
+        port map (
+            clk => clk,
+            trig => pulse_signal,
+            echo => echo2_signal
+        );
+
+    -- Clock Enable Instance
+    clk_en : clock_enable
+        generic map (
+            N_PERIODS => 1000
+        )
+        port map (
+            clk => clk,
+            rst => BTNC,
+            pulse => pulse_signal
+        );
+
+    -- Counter Instance
+    counter_up_down : counter
+        generic map(
+            nbit => 4
+        )
+        port map (
+            clk => clk,
+            en_s1 => echo1_signal,
+            en_s2 => echo2_signal,
+            rst => BTNC,
+            count => sig_tmp
+        );
+        
+    -- Display Instance
+    disp : display
+        port map (
+            clear  => BTNC,
+            bin    => sig_tmp,
+            seg(6) => CA,
+            seg(5) => CB,
+            seg(4) => CC,
+            seg(3) => CD,
+            seg(2) => CE,
+            seg(1) => CF,
+            seg(0) => CG  -- Correctly mapping segments
+        );
+
+    DP <= '1'; -- Assume DP is always off in this context
+    AN <= (others => '1'); -- Assuming only one display is active, adjust if multiple
+
+    -- State Control Process
+    process(clk, BTNC)
+    begin
+        if BTNC = '1' then
+            current_state <= closed_state;
+            red_led <= '1';
+            green_led <= '0';
+        elsif rising_edge(clk) then
+            if (echo1_signal = '1' or echo2_signal = '1') and  measuring /= '1' then
+                measuring <= '1';
+                echo_counter <= 0;  -- Start counting from zero
+            elsif (echo1_signal = '0' and echo2_signal = '0') and measuring /= '0' then
+                distance <= echo_counter / 58;
+                measuring <= '0';
+                echo_counter <= 0;
+            elsif measuring /= '0' then
+                echo_counter <= echo_counter + 1;
+            end if;
+
+            -- State and LED control based on distance
+            if distance <= 10 then
+                current_state <= closed_state;
+                red_led <= '1';
+                green_led <= '0';
+            else
+                current_state <= opened_state;
+                red_led <= '0';
+                green_led <= '1';
+            end if;
+        end if;
+    end process;
+
+end Behavioral;
