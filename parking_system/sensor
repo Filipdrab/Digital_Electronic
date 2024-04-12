@@ -2,14 +2,14 @@ library IEEE;
 use IEEE.STD_LOGIC_1164.ALL;
 use IEEE.NUMERIC_STD.ALL;
 
-entity Ultrasonic_Sensor_Display is
+entity sensor is
     Port (
         clk : in STD_LOGIC;  -- Clock de 100MHz
         trig : out STD_LOGIC := '0';  -- Pino Trigger do HC-SR04
         echo : in STD_LOGIC;  -- Pino Echo do HC-SR04
         sensor_out : out STD_LOGIC
     );
-end Ultrasonic_Sensor_Display;
+end sensor;
 
 architecture Behavioral of Ultrasonic_Sensor_Display is
     signal echo_start : boolean := false;
