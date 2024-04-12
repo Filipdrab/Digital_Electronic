@@ -1,53 +1,74 @@
+----------------------------------------------------------------------------------
+-- Company: 
+-- Engineer: 
+-- 
+-- Create Date: 04/09/2024 11:49:25 PM
+-- Design Name: 
+-- Module Name: counter - Behavioral
+-- Project Name: 
+-- Target Devices: 
+-- Tool Versions: 
+-- Description: 
+-- 
+-- Dependencies: 
+-- 
+-- Revision:
+-- Revision 0.01 - File Created
+-- Additional Comments:
+-- 
+----------------------------------------------------------------------------------
+
 
 library IEEE;
 use IEEE.STD_LOGIC_1164.ALL;
-use IEEE.NUMERIC_STD.ALL;
+use ieee.std_logic_unsigned.all;
 
-entity Ultrasonic_Sensor_Display is
-    Port (
-        clk : in STD_LOGIC;  -- Clock de 100MHz
-        trig : out STD_LOGIC := '0';  -- Pino Trigger do HC-SR04
-        echo : in STD_LOGIC;  -- Pino Echo do HC-SR04
-        sensor_out : out STD_LOGIC
-    );
-end Ultrasonic_Sensor_Display;
+-- Uncomment the following library declaration if using
+-- arithmetic functions with Signed or Unsigned values
+--use IEEE.NUMERIC_STD.ALL;
 
-architecture Behavioral of Ultrasonic_Sensor_Display is
-    signal echo_start : boolean := false;
-    signal timer : unsigned(15 downto 0) := (others => '0');
-    signal distance : unsigned(15 downto 0) := (others => '0');
-    signal sensor_sig : std_logic := '0';
-    
+-- Uncomment the following library declaration if instantiating
+-- any Xilinx leaf cells in this code.
+--library UNISIM;
+--use UNISIM.VComponents.all;
+
+entity counter is
+  generic(
+    nbit : integer := 4
+  );
+  Port ( 
+    clk : in std_logic;
+    rst : in std_logic;
+    s1 : in std_logic;
+    s2 : in std_logic;
+    count : out std_logic_vector(nbit - 1 downto 0) 
+  );
+end counter;
+
+architecture Behavioral of counter is
+
+signal sig_count : std_logic_vector(nbit - 1 downto 0);
+
 begin
-    -- Ultrasonic measurement process
-    ultrasonic_process: process(clk)
-    begin
-        if rising_edge(clk) then
-            if echo = '1' and not echo_start then
-                echo_start <= true;
-                timer <= (others => '0');
-            elsif echo = '0' and echo_start then
-                echo_start <= false;
-                distance <= timer / 58;  -- Converting time to distance
-                if distance = 50 then
-                    sensor_sig <= '1';
-                end if;
-            end if;
-            
-            if echo_start then
-                timer <= timer + 1;
-            end if;
-        end if;
-    end process;
 
-    -- Trigger pulse process
-    trigger_process: process
-    begin
-        trig <= '1';
-        wait for 10 us;
-        trig <= '0';
-        wait for 60 ms;
+   p_counter : process(clk)
+   begin
+       
+       if rising_edge(clk) then
+           if (rst = '1') then
+                 sig_count <= (others => '0');
+                 
+           elsif (s1 = '1') then
+                sig_count <= sig_count + 1;
+                  
+           elsif (s2 = '1') then
+                sig_count <= sig_count - 1;   
+           else
+                sig_count <= sig_count;
+           end if;         
+      end if;
     end process;
-
-    sensor_out <= sensor_sig;
+        
+	count <= sig_count;					
+						
 end Behavioral;
