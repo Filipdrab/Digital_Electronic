@@ -1,1 +1,53 @@
 
+library IEEE;
+use IEEE.STD_LOGIC_1164.ALL;
+use IEEE.NUMERIC_STD.ALL;
+
+entity Ultrasonic_Sensor_Display is
+    Port (
+        clk : in STD_LOGIC;  -- Clock de 100MHz
+        trig : out STD_LOGIC := '0';  -- Pino Trigger do HC-SR04
+        echo : in STD_LOGIC;  -- Pino Echo do HC-SR04
+        sensor_out : out STD_LOGIC
+    );
+end Ultrasonic_Sensor_Display;
+
+architecture Behavioral of Ultrasonic_Sensor_Display is
+    signal echo_start : boolean := false;
+    signal timer : unsigned(15 downto 0) := (others => '0');
+    signal distance : unsigned(15 downto 0) := (others => '0');
+    signal sensor_sig : std_logic := '0';
+    
+begin
+    -- Ultrasonic measurement process
+    ultrasonic_process: process(clk)
+    begin
+        if rising_edge(clk) then
+            if echo = '1' and not echo_start then
+                echo_start <= true;
+                timer <= (others => '0');
+            elsif echo = '0' and echo_start then
+                echo_start <= false;
+                distance <= timer / 58;  -- Converting time to distance
+                if distance = 50 then
+                    sensor_sig <= '1';
+                end if;
+            end if;
+            
+            if echo_start then
+                timer <= timer + 1;
+            end if;
+        end if;
+    end process;
+
+    -- Trigger pulse process
+    trigger_process: process
+    begin
+        trig <= '1';
+        wait for 10 us;
+        trig <= '0';
+        wait for 60 ms;
+    end process;
+
+    sensor_out <= sensor_sig;
+end Behavioral;
