@@ -4,6 +4,10 @@ use IEEE.STD_LOGIC_1164.ALL;
 entity top_level is
     Port (
         clk : in STD_LOGIC; -- Clock principal
+        echo1 : in STD_LOGIC;
+        echo2 : in STD_LOGIC;
+        trig1 : out STD_LOGIC;
+        trig2 : out STD_LOGIC;
         CA    : out   std_logic;                   -- Cathode of segment A
         CB    : out   std_logic;                    -- Cathode of segment B
         CC    : out   std_logic;                    -- Cathode of segment C
@@ -20,26 +24,28 @@ entity top_level is
 end top_level;
 
 architecture Behavioral of top_level is
-    type state_type is (opened_state, closed_state);
-    signal current_state : state_type;
+--    type state_type is (opened_state, closed_state);
+--    signal current_state : state_type;
     
     -- Component Declarations
     component sensor is
-        Port ( clk : in STD_LOGIC;
-               trig : in STD_LOGIC;
-               echo : out STD_LOGIC
-               );
+      Port (
+            clk : in STD_LOGIC;  -- Clock de 100MHz
+            trigger : out STD_LOGIC;  -- Pino Trigger do HC-SR04
+            echo : in STD_LOGIC;  -- Pino Echo do HC-SR04
+            sensor_out : out STD_LOGIC
+        );
     end component;
     
-    component counter_up_down is
+    component counter is
       generic(
-        nbit : integer
+        nbit : integer := 4
       );
       Port ( 
         clk : in std_logic;
-        echo1 : in std_logic;
-        echo2 : in std_logic;
         rst : in std_logic;
+        s1 : in std_logic;
+        s2 : in std_logic;
         count : out std_logic_vector(nbit - 1 downto 0) 
       );
     end component;
@@ -53,27 +59,39 @@ architecture Behavioral of top_level is
    end component;
 
     -- Internal Signals
-    --signal echo1_signal, echo2_signal, pulse_signal : STD_LOGIC;
+    signal count_s1, count_s2 : std_logic := '0';
     signal sig_tmp : std_logic_vector(3 downto 0);
-    signal echo_counter : integer := 0;
-    signal echo_sig1 : std_logic;
-    signal echo_sig2 : std_logic;
-    signal distance : integer := 0;
-    signal measuring : STD_LOGIC := '0';
 
 begin
- -- Counter Instance
-    count : counter_up_down 
-      generic map(
-         nbit => 4
-          )
-      port map( 
-        clk => clk,
-        rst => BTNC,
-        echo1 => echo_sig1, 
-        echo2 => echo_sig2,
-        count => sig_tmp
-      );
+    -- Sensor Instances
+    sensor1 : sensor
+        port map (
+            clk => clk,
+            trig => trig1,
+            echo => echo1,
+            sensor_out => count_s1
+        );
+        
+    sensor2 : sensor
+        port map (
+            clk => clk,
+            trig => trig2,
+            echo => echo2,
+            sensor_out => count_s1
+        );
+
+    -- Counter Instance
+    count : counter
+        generic map(
+            nbit => 4
+        )
+        port map (
+            clk => clk,
+            s1 => count_s1,
+            s2 => count_s2,
+            rst => BTNC,
+            count => sig_tmp
+        );
         
     -- Display Instance
     disp : display
@@ -92,36 +110,6 @@ begin
     DP <= '1'; -- Assume DP is always off in this context
     AN <= (others => '1'); -- Assuming only one display is active, adjust if multiple
 
-    -- State Control Process
-    process(clk, BTNC)
-    begin
-        if BTNC = '1' then
-            current_state <= closed_state;
-            red_led <= '1';
-            green_led <= '0';
-        elsif rising_edge(clk) then
-            if (echo_sig1 = '1' or echo_sig2 = '1') and  measuring /= '1' then
-                measuring <= '1';
-                echo_counter <= 0;  -- Start counting from zero
-            elsif (echo_sig1 = '0' and echo_sig2 = '0') and measuring /= '0' then
-                distance <= echo_counter / 58;
-                measuring <= '0';
-                echo_counter <= 0;
-            elsif measuring /= '0' then
-                echo_counter <= echo_counter + 1;
-            end if;
 
-            -- State and LED control based on distance
-            if distance <= 10 then
-                current_state <= closed_state;
-                red_led <= '1';
-                green_led <= '0';
-            else
-                current_state <= opened_state;
-                red_led <= '0';
-                green_led <= '1';
-            end if;
-        end if;
-    end process;
 
 end Behavioral;
