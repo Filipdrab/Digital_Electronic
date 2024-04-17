@@ -1,74 +1,52 @@
-----------------------------------------------------------------------------------
--- Company: 
--- Engineer: 
--- 
--- Create Date: 04/09/2024 11:49:25 PM
--- Design Name: 
--- Module Name: counter - Behavioral
--- Project Name: 
--- Target Devices: 
--- Tool Versions: 
--- Description: 
--- 
--- Dependencies: 
--- 
--- Revision:
--- Revision 0.01 - File Created
--- Additional Comments:
--- 
-----------------------------------------------------------------------------------
-
-
 library IEEE;
 use IEEE.STD_LOGIC_1164.ALL;
-use ieee.std_logic_unsigned.all;
-
--- Uncomment the following library declaration if using
--- arithmetic functions with Signed or Unsigned values
---use IEEE.NUMERIC_STD.ALL;
-
--- Uncomment the following library declaration if instantiating
--- any Xilinx leaf cells in this code.
---library UNISIM;
---use UNISIM.VComponents.all;
+use IEEE.NUMERIC_STD.ALL; -- Pacote recomendado para operaç?es aritméticas
 
 entity counter is
-  generic(
-    nbit : integer := 4
-  );
-  Port ( 
-    clk : in std_logic;
-    rst : in std_logic;
-    s1 : in std_logic;
-    s2 : in std_logic;
-    count : out std_logic_vector(nbit - 1 downto 0) 
-  );
+    generic (
+        nbit : integer := 16  -- Define a largura do contador
+    );
+    Port ( 
+        clk : in  std_logic;   -- Clock input
+        rst : in  std_logic;   -- Reset input (active high)
+        s1  : in  std_logic;   -- Sensor 1 input (increment on rising edge)
+        s2  : in  std_logic;   -- Sensor 2 input (decrement on falling edge)
+        count : out std_logic_vector(nbit - 1 downto 0)  -- Counter output
+    );
 end counter;
 
 architecture Behavioral of counter is
-
-signal sig_count : std_logic_vector(nbit - 1 downto 0);
-
+    signal sig_count : unsigned(nbit - 1 downto 0) := (others => '0');
+    signal last_s1 : std_logic := '1';  -- To store the last state of s1 for edge detection
+    signal last_s2 : std_logic := '1';  -- To store the last state of s2 for edge detection
 begin
 
-   p_counter : process(clk)
-   begin
-       
-       if rising_edge(clk) then
-           if (rst = '1') then
-                 sig_count <= (others => '0');
-                 
-           elsif (s1 = '1') then
-                sig_count <= sig_count + 1;
-                  
-           elsif (s2 = '1') then
-                sig_count <= sig_count - 1;   
-           else
-                sig_count <= sig_count;
-           end if;         
-      end if;
+    process(clk, rst)
+    begin
+        if rst = '1' then
+            sig_count <= (others => '0');  -- Asynchronous reset to zero
+        elsif rising_edge(clk) then
+            -- Edge detection for s1 (increment on rising edge)
+            if last_s1 = '0' and s1 = '1' then
+                if sig_count /= (2**nbit - 1) then -- Evita overflow
+                    sig_count <= sig_count + 1;
+                end if;
+            end if;
+
+            -- Edge detection for s2 (decrement on falling edge)
+            if last_s2 = '1' and s2 = '0' then
+                if sig_count /= 0 then -- Evita underflow
+                    sig_count <= sig_count - 1;
+                end if;
+            end if;
+
+            -- Update the last states at the end of the process
+            last_s1 <= s1;
+            last_s2 <= s2;
+        end if;
     end process;
-        
-	count <= sig_count;					
-						
+
+    -- Output the current count, convertendo para std_logic_vector
+    count <= std_logic_vector(sig_count);
+
 end Behavioral;
