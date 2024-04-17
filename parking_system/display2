@@ -1,0 +1,74 @@
+library IEEE;
+use IEEE.STD_LOGIC_1164.ALL;
+use IEEE.NUMERIC_STD.ALL; -- Para manipulação de números
+
+entity display_driver is
+    Port (
+        clk     : in  std_logic;             -- Clock principal
+        rst     : in  std_logic;             -- Reset
+        bin     : in  std_logic_vector(15 downto 0); -- Entrada binária (4 dígitos BCD)
+        seg     : out std_logic_vector(6 downto 0);  -- Saídas para os segmentos (A-G)
+        dp      : out std_logic;             -- Saída para o ponto decimal (DP)
+        an      : out std_logic_vector(3 downto 0)  -- Ânodos para cada dígito (multiplexação)
+    );
+end display_driver;
+
+architecture Behavioral of display_driver is
+    signal digit_index : integer range 0 to 3 := 0;  -- Controla qual dígito está ativo
+    signal current_digit : std_logic_vector(3 downto 0);  -- Dígito atual sendo exibido
+
+begin
+    -- Processo de multiplexação dos dígitos
+    digit_control: process(clk, rst)
+    begin
+        if rising_edge(clk) then
+            if rst = '1' then
+                digit_index <= 0;
+            else
+                digit_index <= (digit_index + 1) mod 4;
+            end if;
+        end if;
+    end process;
+
+    -- Atualiza o ânodo e o segmento baseado no dígito ativo
+    anode_segment_control: process(clk)
+    begin
+        if rising_edge(clk) then
+            case digit_index is
+                when 0 => 
+                    an <= "1110";
+                    current_digit <= bin(3 downto 0);
+                when 1 => 
+                    an <= "1101";
+                    current_digit <= bin(7 downto 4);
+                when 2 => 
+                    an <= "1011";
+                    current_digit <= bin(11 downto 8);
+                when 3 => 
+                    an <= "0111";
+                    current_digit <= bin(15 downto 12);
+                when others =>
+                    an <= "1111";  -- Todos os dígitos desligados
+            end case;
+            seg <= decode_digit(current_digit);  -- Chama a função para decodificar o dígito
+            dp <= '1';  -- Ponto decimal desativado
+        end if;
+    end process;
+
+    -- Função para decodificar dígito BCD para 7 segmentos
+    function decode_digit(digit : std_logic_vector(3 downto 0)) return std_logic_vector is
+        variable seg_out : std_logic_vector(6 downto 0);
+    begin
+        case digit is
+            when "0000" => seg_out := "0000001"; -- 0
+            when "0001" => seg_out := "1001111"; -- 1
+            -- Adicione cases para 2-9 e letras A-F se necessário
+            when others => seg_out := "1111111"; -- Display apagado
+        end case;
+        return seg_out;
+    end function;
+
+end Behavioral;
+
+
+
